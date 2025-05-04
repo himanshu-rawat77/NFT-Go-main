@@ -1,11 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNFT } from "@/contexts/NFTContext";
-import { MapPin, Grid2x2, Filter, Navigation, Loader2 } from "lucide-react";
-import { 
+import {
+  MapPin,
+  Filter,
+  Navigation,
+  Loader2,
+  X,
+  Compass,
+  ArrowRight,
+} from "lucide-react";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -19,40 +27,45 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
+  SheetClose,
 } from "@/components/ui/sheet";
 import { Slider } from "@/components/ui/slider";
+import { motion, AnimatePresence } from "framer-motion";
 
 const categoryColors = {
-  common: "bg-gray-100 text-gray-800",
-  rare: "bg-blue-100 text-blue-800",
-  epic: "bg-purple-100 text-purple-800",
-  legendary: "bg-amber-100 text-amber-800",
+  common: "bg-gray-100 text-gray-800 border-gray-200",
+  rare: "bg-blue-100 text-blue-800 border-blue-200",
+  epic: "bg-purple-100 text-purple-800 border-purple-200",
+  legendary: "bg-amber-100 text-amber-800 border-amber-200",
 };
 
 export default function Explore() {
-  const { 
-    nfts, 
-    loading, 
-    setSelectedNFT, 
-    refreshNFTs, 
+  const {
+    nfts,
+    loading,
+    setSelectedNFT,
+    refreshNFTs,
     userLocation,
-    watchUserLocation
+    watchUserLocation,
   } = useNFT();
-  
+
   const [category, setCategory] = useState("all");
   const [maxDistance, setMaxDistance] = useState(5);
+  const [expandedNft, setExpandedNft] = useState<string | null>(null);
+  const [isFiltering, setIsFiltering] = useState(false);
   const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // Start watching location when component mounts
   useEffect(() => {
     watchUserLocation();
-  }, [watchUserLocation]);
+  }, []);
 
   // Calculate distances for NFTs based on user location
   const getNFTsWithDistance = () => {
     if (!userLocation) return nfts;
 
-    return nfts.map(nft => {
+    return nfts.map((nft) => {
       const distance = calculateDistance(
         userLocation.lat,
         userLocation.lng,
@@ -64,36 +77,45 @@ export default function Explore() {
   };
 
   // Haversine formula to calculate distance between two points
-  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const calculateDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ) => {
     const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     const distance = R * c;
     return Number(distance.toFixed(1));
   };
 
-  const filteredNfts = getNFTsWithDistance().filter(nft => {
-    let categoryMatch = true;
-    let distanceMatch = true;
-    
-    if (category && category !== 'all') {
-      categoryMatch = nft.category === category;
-    }
-    
-    if (maxDistance && nft.distance) {
-      distanceMatch = nft.distance <= maxDistance;
-    }
-    
-    return categoryMatch && distanceMatch;
-  }).sort((a, b) => (a.distance || 0) - (b.distance || 0));
+  const filteredNfts = getNFTsWithDistance()
+    .filter((nft) => {
+      let categoryMatch = true;
+      let distanceMatch = true;
+
+      if (category && category !== "all") {
+        categoryMatch = nft.category === category;
+      }
+
+      if (maxDistance && nft.distance) {
+        distanceMatch = nft.distance <= maxDistance;
+      }
+
+      return categoryMatch && distanceMatch;
+    })
+    .sort((a, b) => (a.distance || 0) - (b.distance || 0));
 
   const handleViewNFT = (id: string) => {
-    const nft = nfts.find(n => n.id === id);
+    const nft = nfts.find((n) => n.id === id);
     if (nft) {
       setSelectedNFT(nft);
       navigate(`/nft/${id}`);
@@ -105,41 +127,78 @@ export default function Explore() {
   };
 
   const getCategoryColor = (category: string) => {
-    return categoryColors[category as keyof typeof categoryColors] || "bg-gray-100 text-gray-800";
+    return (
+      categoryColors[category as keyof typeof categoryColors] ||
+      "bg-gray-100 text-gray-800 border-gray-200"
+    );
+  };
+
+  const toggleExpandNft = (id: string) => {
+    if (expandedNft === id) {
+      setExpandedNft(null);
+    } else {
+      setExpandedNft(id);
+      // Scroll to the expanded card
+      setTimeout(() => {
+        const element = document.getElementById(`nft-card-${id}`);
+        if (element && containerRef.current) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 100);
+    }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center mb-4">
+    <div className="space-y-6" ref={containerRef}>
+      <motion.div
+        className="flex justify-between items-center mb-4"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold text-gray-900">Explore NFTs</h1>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
+            Explore NFTs
+          </h1>
           {!userLocation && (
-            <div className="flex items-center text-sm text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">
+            <div className="flex items-center text-sm text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
               <Loader2 className="h-3 w-3 animate-spin mr-1" />
               Getting location...
             </div>
           )}
         </div>
         <div className="flex space-x-2">
-          <Sheet>
+          <Sheet open={isFiltering} onOpenChange={setIsFiltering}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative overflow-hidden group"
+              >
+                <Filter className="h-4 w-4 transition-transform group-hover:scale-110" />
+                <span className="absolute inset-0 bg-amber-100 opacity-0 group-hover:opacity-20 transition-opacity" />
               </Button>
             </SheetTrigger>
-            <SheetContent>
+            <SheetContent className="border-l-amber-200">
               <SheetHeader>
-                <SheetTitle>Filter NFTs</SheetTitle>
+                <SheetTitle className="text-amber-800">Filter NFTs</SheetTitle>
                 <SheetDescription>
-                  Customize your NFT exploration
+                  Customize your NFT exploration experience
                 </SheetDescription>
               </SheetHeader>
-              
-              <div className="space-y-6 py-4">
+
+              <motion.div
+                className="space-y-6 py-4"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.1 }}
+              >
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Category</label>
+                  <label className="text-sm font-medium text-amber-800">
+                    Category
+                  </label>
                   <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger>
+                    <SelectTrigger className="border-amber-200 focus:ring-amber-400">
                       <SelectValue placeholder="Select a category" />
                     </SelectTrigger>
                     <SelectContent>
@@ -151,84 +210,218 @@ export default function Explore() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <label className="text-sm font-medium">Max Distance</label>
-                    <span className="text-sm text-gray-500">{maxDistance} km</span>
+                    <label className="text-sm font-medium text-amber-800">
+                      Max Distance
+                    </label>
+                    <span className="text-sm text-amber-600">
+                      {maxDistance} km
+                    </span>
                   </div>
-                  <Slider 
-                    value={[maxDistance]} 
-                    min={0.5} 
-                    max={10} 
-                    step={0.5} 
+                  <Slider
+                    value={[maxDistance]}
+                    min={0.5}
+                    max={10}
+                    step={0.5}
                     onValueChange={(values) => setMaxDistance(values[0])}
+                    className="[&>span]:bg-amber-400"
                   />
                 </div>
-              </div>
+
+                <SheetClose asChild>
+                  <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600">
+                    Apply Filters
+                  </Button>
+                </SheetClose>
+              </motion.div>
             </SheetContent>
           </Sheet>
         </div>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredNfts.map((nft) => (
-          <Card key={nft.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <div 
-              className="h-48 bg-cover bg-center bg-gradient-to-br from-violet-100 to-blue-100" 
-              style={{ backgroundImage: nft.imageUrl ? `url(${nft.imageUrl})` : '' }}
-            />
-            <div className="p-4">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold text-lg">{nft.name}</h3>
-                <Badge className={getCategoryColor(nft.category)}>
-                  {nft.category}
-                </Badge>
-              </div>
-              <p className="text-gray-500 text-sm mb-2">{nft.shopName}</p>
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">{nft.description}</p>
-              <div className="flex justify-between items-center">
-                <div className="flex items-center text-gray-500 text-sm">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {nft.distance ? `${nft.distance} km away` : 'Getting location...'}
-                </div>
-                <div className="flex space-x-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => handleNavigateToMap(nft.id)}
-                  >
-                    <Navigation className="h-3 w-3 mr-1" />
-                    Navigate
-                  </Button>
-                  <Button 
-                    size="sm"
-                    onClick={() => handleViewNFT(nft.id)}
-                  >
-                    View NFT
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        ))}
-        
+      </motion.div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <AnimatePresence>
+          {filteredNfts.map((nft) => {
+            const isExpanded = expandedNft === nft.id;
+            return (
+              <motion.div
+                key={nft.id}
+                id={`nft-card-${nft.id}`}
+                layout
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{
+                  opacity: 1,
+                  scale: 1,
+                  zIndex: isExpanded ? 10 : 1,
+                }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 30,
+                  layout: { duration: 0.3 },
+                }}
+                className={`${
+                  isExpanded ? "md:col-span-2 lg:col-span-3 relative z-10" : ""
+                }`}
+              >
+                <Card
+                  className={`overflow-hidden transition-all duration-300 hover:shadow-xl ${
+                    isExpanded
+                      ? "shadow-2xl"
+                      : "hover:shadow-amber-100 cursor-pointer"
+                  }`}
+                  onClick={() => !isExpanded && toggleExpandNft(nft.id)}
+                >
+                  <div className="relative">
+                    <div
+                      className={`bg-cover bg-center transition-all duration-500 ${
+                        isExpanded ? "h-64" : "h-48"
+                      }`}
+                      style={{
+                        backgroundImage: nft.imageUrl
+                          ? `url(${nft.imageUrl})`
+                          : "",
+                        backgroundPosition: "center 30%",
+                      }}
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    </div>
+
+                    <div className="absolute top-3 right-3">
+                      <Badge
+                        className={`${getCategoryColor(
+                          nft.category
+                        )} border shadow-sm`}
+                      >
+                        {nft.category}
+                      </Badge>
+                    </div>
+
+                    {isExpanded && (
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="absolute top-3 left-3 bg-black/30 hover:bg-black/50 text-white border-none"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpandNft(nft.id);
+                        }}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+
+                    <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+                      <h3 className="font-bold text-lg drop-shadow-md">
+                        {nft.name}
+                      </h3>
+                      <div className="flex items-center text-white/90 text-sm">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        <span>{nft.shopName}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        className="p-4 space-y-4"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <p className="text-gray-600">{nft.description}</p>
+
+                        <div className="flex items-center text-amber-600 text-sm font-medium">
+                          <MapPin className="h-4 w-4 mr-1" />
+                          {nft.distance
+                            ? `${nft.distance} km away`
+                            : "Getting location..."}
+                        </div>
+
+                        <div className="flex space-x-3 pt-2">
+                          <Button
+                            className="flex-1 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 gap-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewNFT(nft.id);
+                            }}
+                          >
+                            <ArrowRight className="h-4 w-4" />
+                            View Details
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="flex-1 border-amber-200 text-amber-700 hover:bg-amber-50 gap-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleNavigateToMap(nft.id);
+                            }}
+                          >
+                            <Navigation className="h-4 w-4" />
+                            Navigate
+                          </Button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {!isExpanded && (
+                    <div className="p-3 flex justify-between items-center">
+                      <div className="flex items-center text-amber-600 text-sm">
+                        <MapPin className="h-3 w-3 mr-1" />
+                        {nft.distance ? `${nft.distance} km away` : "..."}
+                      </div>
+                      <div className="text-xs text-gray-500">Tap to view</div>
+                    </div>
+                  )}
+                </Card>
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
+
         {filteredNfts.length === 0 && (
-          <div className="col-span-full flex flex-col items-center justify-center py-10 text-center">
-            <div className="rounded-full bg-gray-100 p-3 mb-4">
-              <MapPin className="h-6 w-6 text-gray-400" />
+          <motion.div
+            className="col-span-full flex flex-col items-center justify-center py-10 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="rounded-full bg-amber-100 p-5 mb-4">
+              <Compass className="h-8 w-8 text-amber-600" />
             </div>
             <h3 className="text-lg font-medium text-gray-900">No NFTs Found</h3>
             <p className="text-gray-500 max-w-md mt-2">
-              Try adjusting your filters or explore different areas to find NFTs.
+              Try adjusting your filters or explore different areas to find
+              NFTs.
             </p>
-          </div>
+          </motion.div>
         )}
       </div>
-      
-      <div className="text-center text-gray-500 text-sm py-4">
-        {loading ? 'Loading NFTs...' : 'Pull down to refresh'}
-      </div>
+
+      {expandedNft && (
+        <motion.div
+          className="fixed inset-0 bg-black/20 backdrop-blur-sm z-0"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={() => setExpandedNft(null)}
+        />
+      )}
+
+      <motion.div
+        className="text-center text-amber-600 text-sm py-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+      >
+        {loading ? "Loading NFTs..." : "Pull down to refresh"}
+      </motion.div>
     </div>
   );
 }
