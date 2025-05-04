@@ -121,7 +121,7 @@ export default function MapPage() {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [watchUserLocation]);
+  }, []);
 
   // Update view state when user location changes
   useEffect(() => {
