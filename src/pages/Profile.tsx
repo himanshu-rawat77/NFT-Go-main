@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
+import { useUser } from "@civic/auth-web3/react";
 
 const categoryColors = {
   common: "bg-gray-100 text-gray-800 border-gray-200",
@@ -30,6 +31,7 @@ export default function Profile() {
   const { claimedNFTs } = useNFT();
   const [activeTab, setActiveTab] = useState("collection");
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const { user } = useUser();
 
   const getCategoryColor = (category: string) => {
     return (
@@ -54,7 +56,7 @@ export default function Profile() {
             <div className="h-32 bg-gradient-to-r from-gray-900 to-gray-800" />
             <div className="absolute -bottom-12 left-0 w-full px-6 flex justify-between">
               <Avatar className="h-24 w-24 ring-4 ring-white shadow-xl">
-                <AvatarImage src="https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=250&q=80" />
+                <AvatarImage src={user.picture} />
                 <AvatarFallback className="bg-gray-200">
                   <User className="h-10 w-10 text-gray-500" />
                 </AvatarFallback>
@@ -85,7 +87,7 @@ export default function Profile() {
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                  Alex Johnson
+                  {user?.name}
                 </h1>
                 <p className="text-gray-500">NFT Collector & Explorer</p>
               </div>

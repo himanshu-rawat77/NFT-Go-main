@@ -1,9 +1,12 @@
+"use client";
+
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useNFT } from "@/contexts/NFTContext";
+import { useUser } from "@civic/auth-web3/react";
 import {
   MapPin,
   Filter,
@@ -12,6 +15,8 @@ import {
   X,
   Compass,
   ArrowRight,
+  LogOut,
+  User,
 } from "lucide-react";
 import {
   Select,
@@ -29,6 +34,14 @@ import {
   SheetTrigger,
   SheetClose,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -49,10 +62,12 @@ export default function Explore() {
     watchUserLocation,
   } = useNFT();
 
+  const user = useUser();
   const [category, setCategory] = useState("all");
   const [maxDistance, setMaxDistance] = useState(5);
   const [expandedNft, setExpandedNft] = useState<string | null>(null);
   const [isFiltering, setIsFiltering] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -148,6 +163,23 @@ export default function Explore() {
     }
   };
 
+  const handleSignOut = async () => {
+    try {
+      setIsLoggingOut(true);
+      await user.signOut();
+
+      // Show loader for 2 seconds before redirecting
+      setTimeout(() => {
+        navigate("/login");
+      }, 2000);
+    } catch (error) {
+      console.error("Error signing out:", error);
+      setIsLoggingOut(false);
+    }
+  };
+
+  console.log("user", user);
+
   return (
     <div className="space-y-6" ref={containerRef}>
       <motion.div
@@ -238,6 +270,45 @@ export default function Explore() {
               </motion.div>
             </SheetContent>
           </Sheet>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                className="flex items-center gap-2 border-amber-200 hover:bg-amber-50 transition-all"
+              >
+                {user.user === null ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
+                    <span className="text-sm text-amber-600">
+                      Authenticating...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <User className="h-4 w-4 text-amber-600" />
+                    <span className="max-w-[100px] truncate text-sm">
+                      {user.user?.name || "User"}
+                    </span>
+                  </>
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+
+            {user.authStatus === "authenticated" && (
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-red-500 focus:text-red-500 cursor-pointer"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            )}
+          </DropdownMenu>
         </div>
       </motion.div>
 
@@ -413,6 +484,85 @@ export default function Explore() {
           onClick={() => setExpandedNft(null)}
         />
       )}
+
+      {/* Logout loading overlay */}
+      <AnimatePresence>
+        {isLoggingOut && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-white/50 backdrop-blur-md flex items-center justify-center z-50"
+          >
+            <motion.div
+              className="flex flex-col items-center"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            >
+              <div className="relative mb-4">
+                <motion.div
+                  className="absolute inset-0 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 blur-xl opacity-70"
+                  animate={{
+                    scale: [1, 1.5, 1],
+                    opacity: [0.7, 0.9, 0.7],
+                  }}
+                  transition={{
+                    duration: 2,
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "easeInOut",
+                  }}
+                />
+                <motion.div
+                  className="relative h-20 w-20 rounded-full bg-white flex items-center justify-center shadow-xl"
+                  animate={{ rotate: 360 }}
+                  transition={{
+                    duration: 3,
+                    repeat: Number.POSITIVE_INFINITY,
+                    ease: "linear",
+                  }}
+                >
+                  <motion.div
+                    animate={{
+                      rotate: -360,
+                      scale: [1, 1.1, 1],
+                    }}
+                    transition={{
+                      rotate: {
+                        duration: 5,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: "linear",
+                      },
+                      scale: {
+                        duration: 2,
+                        repeat: Number.POSITIVE_INFINITY,
+                        ease: "easeInOut",
+                      },
+                    }}
+                  >
+                    <Compass className="h-10 w-10 text-amber-500" />
+                  </motion.div>
+                </motion.div>
+              </div>
+              <motion.h3
+                className="text-xl font-medium text-gray-800"
+                animate={{
+                  opacity: [0.5, 1, 0.5],
+                  y: [0, -5, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Number.POSITIVE_INFINITY,
+                  ease: "easeInOut",
+                }}
+              >
+                Logging out...
+              </motion.h3>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <motion.div
         className="text-center text-amber-600 text-sm py-4"
