@@ -46,8 +46,8 @@ mapboxgl.accessToken =
   "pk.eyJ1IjoiaGltYW5zaHUtcmF3YXQtNyIsImEiOiJjbTIxcmViNm0weGZnMmpxc2E0dmIwazdhIn0.0n9VXfbQP3k05uC86PMGDg";
 
 const INITIAL_VIEW_STATE: Partial<ViewState> = {
-  latitude: 28.4996139,
-  longitude: 77.2457196,
+  latitude: 28.4968497,
+  longitude: 77.244192,
   zoom: 13,
   bearing: 0,
   pitch: 0,

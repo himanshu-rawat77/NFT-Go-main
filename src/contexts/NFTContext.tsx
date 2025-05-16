@@ -66,7 +66,7 @@ interface NFTContextType {
 const NFTContext = createContext<NFTContextType | undefined>(undefined);
 
 const SAMPLE_LOCATIONS = [
-  { lat: 28.4996139, lng: 77.2457196, name: "India Gate Gallery" },
+  { lat: 28.4968497, lng: 77.244192, name: "India Gate Gallery" },
   { lat: 28.4996139, lng: 77.2457196, name: "National Gallery" },
   { lat: 28.5072521, lng: 77.2397517, name: "Children's Park Art Space" },
   { lat: 28.5083561, lng: 77.2317759, name: "Hyderabad House Collection" },
